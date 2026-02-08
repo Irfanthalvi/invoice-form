@@ -236,7 +236,7 @@ export default function EditInvoicePage() {
         <div className="mt-8 flex justify-end">
           <button
             type="submit"
-            className="flex items-center gap-2 bg-black hover:bg-black disabled:opacity-60 text-white px-4 py-2 rounded-md"
+            className="flex items-center gap-2 cursor-pointer bg-black hover:bg-black disabled:opacity-60 text-white px-4 py-2 rounded-md"
           >
             Update Invoice
           </button>
