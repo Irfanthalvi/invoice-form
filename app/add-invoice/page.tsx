@@ -237,9 +237,9 @@ export default function AddInvoice() {
         <div className="mt-8 flex justify-end">
           <button
             type="submit"
-            className="flex items-center gap-2 bg-black hover:bg-black disabled:opacity-60 text-white px-4 py-2 rounded-md"
+            className="flex items-center gap-2 bg-black cursor-pointer hover:bg-black disabled:opacity-60 text-white px-4 py-2 rounded-md"
           >
-            Add Invoice
+            Create Invoice
           </button>
         </div>
       </form>

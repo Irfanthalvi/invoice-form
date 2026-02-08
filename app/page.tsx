@@ -161,9 +161,9 @@ export default function InvoiceListPage() {
         <h1 className="text-3xl font-bold text-gray-800">Invoice List</h1>
         <Link
           href="/add-invoice"
-          className="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 transition"
+          className="bg-black text-white px-5 py-2 rounded-md cursor-pointer transition"
         >
-          + Add Invoice
+          +  Create Invoice
         </Link>
       </div>
 
@@ -202,21 +202,21 @@ export default function InvoiceListPage() {
                     <td className="px-4 py-2 border border-gray-300 flex gap-2">
                       <button
                         onClick={() => router.push(`/invoices/${inv.id}`)}
-                        className="p-1 rounded hover:bg-blue-100 text-blue-600"
+                        className="p-1 rounded cursor-pointer hover:bg-blue-100 text-blue-600"
                         title="View Invoice"
                       >
                         <Eye size={18} />
                       </button>
                       <button
                         onClick={() => router.push(`/edit-invoice/${inv.id}`)}
-                        className="p-1 rounded hover:bg-green-100 text-green-600"
+                        className="p-1 rounded cursor-pointer hover:bg-green-100 text-green-600"
                         title="Edit Invoice"
                       >
                         <Edit size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(inv.id)}
-                        className="p-1 rounded hover:bg-red-100 text-red-600"
+                        className="p-1 rounded cursor-pointer hover:bg-red-100 text-red-600"
                         title="Delete Invoice"
                       >
                         <Trash2 size={18} />
