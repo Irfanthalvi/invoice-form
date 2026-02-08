@@ -5,16 +5,16 @@ import Link from 'next/link';
 import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Eye, Edit, Trash2 } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast'; // ✅ Hot Toast import
+import toast, { Toaster } from 'react-hot-toast';
 import Swal from 'sweetalert2';
 
 /* Backend Types */
 interface BackendItem {
   item_name: string;
-  unit: string;
+  unit?: string;
   quantity: number;
   unit_price: number;
-  description: string;
+  description?: string;
 }
 
 interface BackendInvoice {
@@ -49,10 +49,10 @@ interface InvoiceApiResponse {
 /* Frontend Types */
 interface Item {
   item_name: string;
-  unit: string;
+  unit?: string;
   quantity: number;
   unit_price: number;
-  description: string;
+  description?: string;
 }
 
 interface Invoice {
@@ -78,14 +78,14 @@ export default function InvoiceListPage() {
   const [loading, setLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
 
-  /* Fetch invoices */
   const fetchInvoices = async () => {
+    setLoading(true);
     try {
       const response = await axios.get<InvoiceApiResponse>(
         `${process.env.NEXT_PUBLIC_BASE_URL}/invoices`
       );
 
-      const backendInvoices = response.data.data.data;
+      const backendInvoices = response.data.data?.data || [];
 
       const formatted: Invoice[] = backendInvoices.map((inv) => ({
         id: inv.id,
@@ -107,7 +107,7 @@ export default function InvoiceListPage() {
       setInvoices(formatted);
     } catch (err) {
       console.error('Fetch failed', err);
-      toast.error('Failed to fetch invoices'); // ✅ Toast on fetch error
+      toast.error('Failed to fetch invoices');
     } finally {
       setLoading(false);
     }
@@ -117,47 +117,44 @@ export default function InvoiceListPage() {
     fetchInvoices();
   }, []);
 
-  /* Delete invoice */
-const handleDelete = async (id: number) => {
-  const result = await Swal.fire({
-    title: 'Are you sure?',
-    text: 'Do you really want to delete this invoice?',
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#3085d6',
-    confirmButtonText: 'Yes, delete it!',
-  });
+  const handleDelete = async (id: number) => {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'Do you really want to delete this invoice?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!',
+    });
 
-  if (result.isConfirmed) {
+    if (!result.isConfirmed) return;
+
     const deletingToast = toast.loading('Deleting invoice...');
     try {
       await axios.delete(`${process.env.NEXT_PUBLIC_BASE_URL}/invoices/${id}`);
       setInvoices((prev) => prev.filter((inv) => inv.id !== id));
       toast.success('Invoice deleted successfully!', { id: deletingToast });
-      Swal.fire('Deleted!', 'The invoice has been deleted.', 'success');
+      // Swal.fire('Deleted!', 'The invoice has been deleted.', 'success');
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete invoice', { id: deletingToast });
       Swal.fire('Error!', 'Failed to delete invoice.', 'error');
     }
-  }
-};
+  };
 
-  /* Expand items */
   const toggleExpand = (id: number) => {
     setExpandedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
 
-  /* Format money */
   const money = (v: number) =>
     v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="w-full overflow-x-auto p-6">
-      <Toaster position="top-right" reverseOrder={false} /> {/* ✅ Hot Toast container */}
+      <Toaster position="top-right" reverseOrder={false} />
 
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
@@ -181,7 +178,7 @@ const handleDelete = async (id: number) => {
           <table className="min-w-full">
             <thead className="bg-gray-100">
               <tr>
-                {['ID','Invoice #','Customer','Phone','Address','Items','Subtotal','Discount','Total','Created At','Actions'].map((heading) => (
+                {['ID','Invoice #','Customer','Phone','Address','Total','Created At','Actions'].map((heading) => (
                   <th
                     key={heading}
                     className="px-4 py-2 border border-gray-300 text-left font-medium text-gray-700"
@@ -194,25 +191,13 @@ const handleDelete = async (id: number) => {
             <tbody className="bg-white">
               {invoices.map((inv) => (
                 <Fragment key={inv.id}>
-                  <tr className="hover:bg-gray-50">
+                  <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleExpand(inv.id)}>
                     <td className="px-4 py-2 border border-gray-300">{inv.id}</td>
                     <td className="px-4 py-2 border border-gray-300">{inv.invoiceNo}</td>
                     <td className="px-4 py-2 border border-gray-300">{inv.customerName}</td>
                     <td className="px-4 py-2 border border-gray-300">{inv.phone}</td>
                     <td className="px-4 py-2 border border-gray-300">{inv.address}</td>
-                    <td className="px-4 py-2 border border-gray-300">
-                      {inv.items.length > 0 && (
-                        <button
-                          onClick={() => toggleExpand(inv.id)}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {expandedIds.includes(inv.id) ? 'Hide Items' : 'View Items'}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-4 py-2 border border-gray-300 text-right">{money(inv.subtotal)}</td>
-                    <td className="px-4 py-2 border border-gray-300 text-right">{money(inv.discount)}</td>
-                    <td className="px-4 py-2 border border-gray-300 text-right">{money(inv.totalAmount)}</td>
+                    <td className="px-4 py-2 border border-gray-300">{money(inv.totalAmount)}</td>
                     <td className="px-4 py-2 border border-gray-300">{new Date(inv.createdAt).toLocaleString()}</td>
                     <td className="px-4 py-2 border border-gray-300 flex gap-2">
                       <button
@@ -239,14 +224,14 @@ const handleDelete = async (id: number) => {
                     </td>
                   </tr>
 
-                  {/* Expanded row showing items */}
+                  {/* Expanded items */}
                   {expandedIds.includes(inv.id) && inv.items.length > 0 && (
                     <tr>
-                      <td colSpan={15} className="bg-gray-50 border border-gray-300 px-4 py-2">
+                      <td colSpan={8} className="bg-gray-50 border border-gray-300 px-4 py-2">
                         <ul className="list-disc list-inside text-sm">
                           {inv.items.map((item, idx) => (
                             <li key={idx}>
-                              <strong>{item.item_name}</strong> — {item.quantity} {item.unit} @ {money(item.unit_price)} {item.description && `(${item.description})`}
+                              <strong>{item.item_name}</strong> — {item.quantity} {item.unit || ''} @ {money(item.unit_price)} {item.description ? `(${item.description})` : ''}
                             </li>
                           ))}
                         </ul>
