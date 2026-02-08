@@ -168,11 +168,28 @@ export default function InvoiceListPage() {
       </div>
 
       {loading && <div className="text-center py-10 text-gray-500">Loading invoices...</div>}
-
-      {!loading && invoices.length === 0 && (
-        <div className="text-center py-10 text-gray-400">No invoices found.</div>
-      )}
-
+        {!loading && invoices.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500">
+            <svg
+              className="w-16 h-16 mb-4 text-gray-300"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17v-2a4 4 0 014-4h4M5 7h14M5 7a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V7z"
+              />
+            </svg>
+            <h2 className="text-2xl font-semibold mb-2">No Invoices Found</h2>
+            <p className="text-gray-400 max-w-xs">
+              You haven’t created any invoices yet. Click the <span className="font-medium text-black">+ Create Invoice</span> button to get started.
+            </p>
+          </div>
+        )}
       {!loading && invoices.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-gray-300">
           <table className="min-w-full">
