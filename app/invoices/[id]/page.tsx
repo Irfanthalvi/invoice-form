@@ -183,18 +183,18 @@ export default function ViewInvoicePage() {
             Pay by: {invoice.due_date || 'N/A'}
           </p>
         </div>
+      </div>
 
-        {/* Download Button */}
-        <div className="mt-8 flex justify-end">
-          <button
-            onClick={downloadPDF}
-            disabled={downloading}
-            className="flex items-center gap-2 bg-black hover:bg-black disabled:opacity-60 text-white px-4 py-2 rounded-md"
-          >
-            <Download size={20} />
-            {downloading ? 'Generating PDF...' : 'Download PDF'}
-          </button>
-        </div>
+      {/* Download Button */}
+      <div className="mt-6 flex justify-end">
+        <button
+          onClick={downloadPDF}
+          disabled={downloading}
+          className="flex items-center gap-2 bg-black hover:bg-black disabled:opacity-60 text-white px-4 py-2 rounded-md"
+        >
+          <Download size={20} />
+          {downloading ? 'Generating PDF...' : 'Download PDF'}
+        </button>
       </div>
     </div>
   );
