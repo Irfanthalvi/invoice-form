@@ -186,7 +186,7 @@ export default function InvoiceListPage() {
             </svg>
             <h2 className="text-2xl font-semibold mb-2">No Invoices Found</h2>
             <p className="text-gray-400 max-w-xs">
-              You haven’t created any invoices yet. Click the <span className="font-medium text-black">+ Create Invoice</span> button to get started.
+              You haven’t created any invoices yet. Click the <span className="font-medium text-black :hover-border-b cursor-pointer">+ Create Invoice</span> button to get started.
             </p>
           </div>
         )}

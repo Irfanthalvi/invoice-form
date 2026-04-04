@@ -93,6 +93,7 @@ export default function EditInvoicePage() {
     const loadingToast = toast.loading('Updating invoice...');
     try {
       await axios.put(`${process.env.NEXT_PUBLIC_BASE_URL}/invoices/${params.id}`, {
+        invoice_number: invoice?.invoice_number,
         customer_name: customerName,
         customer_phone: phone,
         customer_address: address,
