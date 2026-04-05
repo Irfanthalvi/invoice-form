@@ -225,13 +225,13 @@ function InvoiceListContent() {
   };
 
   return (
-    <div className="w-full overflow-x-auto p-6">
+    <div className="w-full p-4 sm:p-6 max-w-7xl mx-auto">
       <Toaster position="top-right" reverseOrder={false} />
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Invoice List</h1>
-        <div className="flex items-center gap-4 w-full sm:w-auto">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-4 w-full sm:w-auto">
           <div className="relative w-full sm:w-80 group">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-black text-gray-400">
               <Search size={18} />
@@ -255,7 +255,7 @@ function InvoiceListContent() {
           </div>
           <Link
             href="/add-invoice"
-            className="whitespace-nowrap bg-black text-white px-5 py-2 rounded-lg cursor-pointer hover:bg-gray-800 transition shadow-md hover:shadow-lg font-medium tracking-wide flex items-center gap-1"
+            className="w-full sm:w-auto justify-center whitespace-nowrap bg-black text-white px-5 py-2 rounded-lg cursor-pointer hover:bg-gray-800 transition shadow-md hover:shadow-lg font-medium tracking-wide flex items-center gap-1"
           >
             <span className="text-lg leading-none mb-[2px]">+</span> Create Invoice
           </Link>
@@ -286,9 +286,10 @@ function InvoiceListContent() {
         </div>
       )}
       {invoices.length > 0 && (
-        <div className={`overflow-hidden rounded-xl border border-gray-200 shadow-sm transition-opacity ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
-          <table className="min-w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+        <div className={`bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.1)] transition-shadow duration-300 border-0 ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+            <thead className="bg-[#f8fafc] border-b border-gray-100">
               <tr>
                 {['ID', 'Invoice #', 'Customer', 'Phone', 'Address', 'Total', 'Created At', 'Actions'].map((heading) => (
                   <th
@@ -300,10 +301,10 @@ function InvoiceListContent() {
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-gray-100">
               {invoices.map((inv) => (
                 <Fragment key={inv.id}>
-                  <tr className="hover:bg-gray-50/80 cursor-pointer transition-colors" onClick={() => toggleExpand(inv.id)}>
+                  <tr className="hover:bg-slate-50/80 cursor-pointer transition-colors" onClick={() => toggleExpand(inv.id)}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{inv.id}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{inv.invoiceNo}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{inv.customerName}</td>
@@ -338,10 +339,10 @@ function InvoiceListContent() {
 
                   {/* Expanded items */}
                   {expandedIds.includes(inv.id) && inv.items.length > 0 && (
-                    <tr className="bg-gray-50/50">
-                      <td colSpan={8} className="px-6 py-4 border-b border-gray-100">
-                        <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Invoice Items</h4>
+                    <tr className="bg-slate-50/30">
+                      <td colSpan={8} className="px-6 py-4">
+                        <div className="bg-white rounded-xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-50 p-5 mx-2 my-1">
+                          <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Invoice Items</h4>
                           <ul className="space-y-2">
                             {inv.items.map((item, idx) => (
                               <li key={idx} className="flex justify-between items-center text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
@@ -363,7 +364,8 @@ function InvoiceListContent() {
               ))}
             </tbody>
           </table>
-          <div className="bg-white border-t border-gray-200">
+          </div>
+          <div className="bg-white rounded-b-2xl overflow-hidden pb-1 pt-1 opacity-90">
             <TablePagination
               component="div"
               count={totalItems}
