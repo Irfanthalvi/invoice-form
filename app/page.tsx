@@ -2,11 +2,12 @@
 
 import axios from 'axios';
 import Link from 'next/link';
-import { Fragment, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Eye, Edit, Trash2 } from 'lucide-react';
+import { Fragment, useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { Eye, Edit, Trash2, Search, X } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import Swal from 'sweetalert2';
+import TablePagination from '@mui/material/TablePagination';
 
 /* Backend Types */
 interface BackendItem {
@@ -72,20 +73,69 @@ interface Invoice {
   items: Item[];
 }
 
-export default function InvoiceListPage() {
+function InvoiceListContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // URL State
+  // URL State
+  const page = parseInt(searchParams.get('page') || '0', 10);
+  const rowsPerPage = parseInt(searchParams.get('limit') || '6', 10);
+  const debouncedSearch = searchParams.get('search') || '';
+
+  // Local state for fast typing
+  const [searchTerm, setSearchTerm] = useState(debouncedSearch);
+
+  // Update URL on search change with debounce
+  useEffect(() => {
+    if (searchTerm === debouncedSearch && searchParams.has('search') === Boolean(searchTerm)) {
+      return; 
+    }
+
+    const handler = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (searchTerm) {
+        params.set('search', searchTerm);
+      } else {
+        params.delete('search');
+      }
+      
+      // Reset to page 0 on new search input only if search has actually changed
+      if (debouncedSearch !== searchTerm) {
+        params.set('page', '0');
+      }
+
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm, debouncedSearch, searchParams, pathname, router]);
+
+  // Sync back if URL changes externally (e.g. back button)
+  useEffect(() => {
+    if (debouncedSearch !== searchTerm) {
+      setSearchTerm(debouncedSearch);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
   const fetchInvoices = async () => {
     setLoading(true);
     try {
       const response = await axios.get<InvoiceApiResponse>(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/invoices`
+        `${process.env.NEXT_PUBLIC_BASE_URL}/invoices`,
+        { params: { page: page + 1, limit: rowsPerPage, search: debouncedSearch } }
       );
 
       const backendInvoices = response.data.data?.data || [];
+      const total = response.data.data?.totalItems || 0;
+      setTotalItems(total);
 
       const formatted: Invoice[] = backendInvoices.map((inv) => ({
         id: inv.id,
@@ -115,7 +165,8 @@ export default function InvoiceListPage() {
 
   useEffect(() => {
     fetchInvoices();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, rowsPerPage, debouncedSearch]);
 
   const handleDelete = async (id: number) => {
     const result = await Swal.fire({
@@ -133,9 +184,17 @@ export default function InvoiceListPage() {
     const deletingToast = toast.loading('Deleting invoice...');
     try {
       await axios.delete(`${process.env.NEXT_PUBLIC_BASE_URL}/invoices/${id}`);
-      setInvoices((prev) => prev.filter((inv) => inv.id !== id));
       toast.success('Invoice deleted successfully!', { id: deletingToast });
-      // Swal.fire('Deleted!', 'The invoice has been deleted.', 'success');
+      
+      // If we deleted the only item on the page, go to previous page.
+      // Otherwise, re-fetch data so backend pagination limit is always filled.
+      if (invoices.length === 1 && page > 0) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('page', String(page - 1));
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+      } else {
+        fetchInvoices();
+      }
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete invoice', { id: deletingToast });
@@ -152,88 +211,124 @@ export default function InvoiceListPage() {
   const money = (v: number) =>
     v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const handleChangePage = (event: unknown, newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('page', newPage.toString());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('limit', event.target.value);
+    params.set('page', '0');
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
   return (
     <div className="w-full overflow-x-auto p-6">
       <Toaster position="top-right" reverseOrder={false} />
 
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Invoice List</h1>
-        <Link
-          href="/add-invoice"
-          className="bg-black text-white px-5 py-2 rounded-md cursor-pointer transition"
-        >
-          +  Create Invoice
-        </Link>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Invoice List</h1>
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          <div className="relative w-full sm:w-80 group">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-black text-gray-400">
+              <Search size={18} />
+            </div>
+            <input
+              type="text"
+              placeholder="Search invoices by name, number..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all sm:text-sm text-base bg-gray-50 focus:bg-white"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-black transition-colors"
+                title="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          <Link
+            href="/add-invoice"
+            className="whitespace-nowrap bg-black text-white px-5 py-2 rounded-lg cursor-pointer hover:bg-gray-800 transition shadow-md hover:shadow-lg font-medium tracking-wide flex items-center gap-1"
+          >
+            <span className="text-lg leading-none mb-[2px]">+</span> Create Invoice
+          </Link>
+        </div>
       </div>
 
-      {loading && <div className="text-center py-10 text-gray-500">Loading invoices...</div>}
-        {!loading && invoices.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500">
-            <svg
-              className="w-16 h-16 mb-4 text-gray-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
+      {loading && invoices.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-black mb-4"></div>
+          <p>Loading invoices...</p>
+        </div>
+      )}
+      {!loading && invoices.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-center text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+          <Search className="w-16 h-16 mb-4 text-gray-300" />
+          <h2 className="text-2xl font-semibold mb-2 text-gray-700">No Invoices Found</h2>
+          <p className="text-gray-500 max-w-sm mb-6">
+            {searchTerm ? `We couldn't find any invoices matching "${searchTerm}". Try adjusting your search.` : "You haven’t created any invoices yet."}
+          </p>
+          {!searchTerm && (
+            <Link
+              href="/add-invoice"
+              className="bg-black text-white px-5 py-2 rounded-lg hover:bg-gray-800 transition font-medium"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 17v-2a4 4 0 014-4h4M5 7h14M5 7a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V7z"
-              />
-            </svg>
-            <h2 className="text-2xl font-semibold mb-2">No Invoices Found</h2>
-            <p className="text-gray-400 max-w-xs">
-              You haven’t created any invoices yet. Click the <span className="font-medium text-black :hover-border-b cursor-pointer">+ Create Invoice</span> button to get started.
-            </p>
-          </div>
-        )}
-      {!loading && invoices.length > 0 && (
-        <div className="overflow-hidden rounded-2xl border border-gray-300">
+              + Create Invoice
+            </Link>
+          )}
+        </div>
+      )}
+      {invoices.length > 0 && (
+        <div className={`overflow-hidden rounded-xl border border-gray-200 shadow-sm transition-opacity ${loading ? 'opacity-50 pointer-events-none' : ''}`}>
           <table className="min-w-full">
-            <thead className="bg-gray-100">
+            <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                {['ID','Invoice #','Customer','Phone','Address','Total','Created At','Actions'].map((heading) => (
+                {['ID', 'Invoice #', 'Customer', 'Phone', 'Address', 'Total', 'Created At', 'Actions'].map((heading) => (
                   <th
                     key={heading}
-                    className="px-4 py-2 border border-gray-300 text-left font-medium text-gray-700"
+                    className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
                   >
                     {heading}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white">
+            <tbody className="bg-white divide-y divide-gray-200">
               {invoices.map((inv) => (
                 <Fragment key={inv.id}>
-                  <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleExpand(inv.id)}>
-                    <td className="px-4 py-2 border border-gray-300">{inv.id}</td>
-                    <td className="px-4 py-2 border border-gray-300">{inv.invoiceNo}</td>
-                    <td className="px-4 py-2 border border-gray-300">{inv.customerName}</td>
-                    <td className="px-4 py-2 border border-gray-300">{inv.phone}</td>
-                    <td className="px-4 py-2 border border-gray-300">{inv.address}</td>
-                    <td className="px-4 py-2 border border-gray-300">{money(inv.totalAmount)}</td>
-                    <td className="px-4 py-2 border border-gray-300">{new Date(inv.createdAt).toLocaleString()}</td>
-                    <td className="px-4 py-2 border border-gray-300 flex gap-2">
+                  <tr className="hover:bg-gray-50/80 cursor-pointer transition-colors" onClick={() => toggleExpand(inv.id)}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{inv.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{inv.invoiceNo}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{inv.customerName}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{inv.phone}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 truncate max-w-[150px]" title={inv.address}>{inv.address}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black font-semibold">Rs {money(inv.totalAmount)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(inv.createdAt).toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium flex gap-3" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => router.push(`/invoices/${inv.id}`)}
-                        className="p-1 rounded cursor-pointer hover:bg-blue-100 text-blue-600"
+                        className="text-gray-400 hover:text-blue-600 transition-colors bg-white hover:bg-blue-50 p-1.5 rounded-md"
                         title="View Invoice"
                       >
                         <Eye size={18} />
                       </button>
                       <button
                         onClick={() => router.push(`/edit-invoice/${inv.id}`)}
-                        className="p-1 rounded cursor-pointer hover:bg-green-100 text-green-600"
+                        className="text-gray-400 hover:text-green-600 transition-colors bg-white hover:bg-green-50 p-1.5 rounded-md"
                         title="Edit Invoice"
                       >
                         <Edit size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(inv.id)}
-                        className="p-1 rounded cursor-pointer hover:bg-red-100 text-red-600"
+                        className="text-gray-400 hover:text-red-600 transition-colors bg-white hover:bg-red-50 p-1.5 rounded-md"
                         title="Delete Invoice"
                       >
                         <Trash2 size={18} />
@@ -243,15 +338,24 @@ export default function InvoiceListPage() {
 
                   {/* Expanded items */}
                   {expandedIds.includes(inv.id) && inv.items.length > 0 && (
-                    <tr>
-                      <td colSpan={8} className="bg-gray-50 border border-gray-300 px-4 py-2">
-                        <ul className="list-disc list-inside text-sm">
-                          {inv.items.map((item, idx) => (
-                            <li key={idx}>
-                              <strong>{item.item_name}</strong> — {item.quantity} {item.unit || ''} @ {money(item.unit_price)} {item.description ? `(${item.description})` : ''}
-                            </li>
-                          ))}
-                        </ul>
+                    <tr className="bg-gray-50/50">
+                      <td colSpan={8} className="px-6 py-4 border-b border-gray-100">
+                        <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+                          <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Invoice Items</h4>
+                          <ul className="space-y-2">
+                            {inv.items.map((item, idx) => (
+                              <li key={idx} className="flex justify-between items-center text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                                <div>
+                                  <span className="font-semibold text-gray-800">{item.item_name}</span>
+                                  {item.description && <span className="text-gray-500 ml-2">({item.description})</span>}
+                                </div>
+                                <div className="text-gray-600 font-medium">
+                                  {item.quantity} {item.unit || ''} <span className="text-gray-400 mx-1">×</span> Rs {money(item.unit_price)}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -259,8 +363,31 @@ export default function InvoiceListPage() {
               ))}
             </tbody>
           </table>
+          <div className="bg-white border-t border-gray-200">
+            <TablePagination
+              component="div"
+              count={totalItems}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              rowsPerPageOptions={[6, 10, 25, 50]}
+            />
+          </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function InvoiceListPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center h-screen w-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+      </div>
+    }>
+      <InvoiceListContent />
+    </Suspense>
   );
 }
